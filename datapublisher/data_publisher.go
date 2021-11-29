@@ -82,10 +82,35 @@ func (dp *DataPublisher) PushTraceRecord(record model.Trace) {
 
 	dp.trs.items = append(dp.trs.items, item)
 
-	log.Println("Pipeline items: ", dp.trs.items)
+	// log.Println("Pipeline items: ", dp.trs.items)
 
 	if len(dp.trs.items) >= BATCH_SIZE {
 		dp.flushRecordSet(STREAM_NAME_TRACE, &dp.trs.items)
+	}
+
+}
+
+func (dp *DataPublisher) PushKeyTraceRecord(record model.KeyTrace) {
+	dp.trs.mutex.Lock()
+	defer dp.trs.mutex.Unlock()
+
+    jsonBuffer, err := json.Marshal(&record)
+    if err != nil {
+        log.Println("Error marshalling key trace record data", err)
+        return
+	}
+
+	item := &kinesis.PutRecordsRequestEntry{
+		Data:         jsonBuffer,
+		PartitionKey: aws.String(record.AccountId),
+	}
+
+	dp.trs.items = append(dp.trs.items, item)
+
+	// log.Println("Pipeline items: ", dp.trs.items)
+
+	if len(dp.trs.items) >= BATCH_SIZE {
+		dp.flushRecordSet(STREAM_NAME_KEY_TRACE, &dp.trs.items)
 	}
 
 }
@@ -96,12 +121,9 @@ func (dp *DataPublisher) flushRecordSet(streamName string, items *[]*kinesis.Put
 		StreamName: aws.String(streamName),
 	})
 	if err != nil {
-		log.Fatal("Error pushing trace recordset to data pipeline", err)
+		log.Fatal("Error pushing recordset to data pipeline", err)
 	} else {
-		log.Println("Trace recordset pushed to data pipeline successfully")
+		log.Println("Recordset pushed to data pipeline.", streamName)
 		*items = nil
 	}
-}
-
-func (dp *DataPublisher) PushKeyTraceRecord(record model.Trace) {
 }

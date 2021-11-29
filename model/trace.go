@@ -31,10 +31,94 @@ type Trace struct {
     Collection string `json:"collection"`
 }
 
+type KeyTrace struct {
+    Id string `json:"id"`
+    AccountId string `json:"account_id"`
+    WebTxnId string `json:"web_txn_id"`
+    RavenpodTxnId string `json:"ravenpod_txn_id"`
+    BlockchainTxnId string `json:"blockchain_txn_id"`
+    MspId string `json:"msp_id"`
+    Hostname string `json:"hostname"`
+    ChannelName string `json:"channel_name"`
+    KeyContent string `json:"key_content"`
+    ValueContent string `json:"value_content"`
+    OperationType int `json:"operation_type"`
+    TimeTaken int64 `json:"time_taken"`
+    ReadAt string `json:"read_at"`
+    WrittenAt string `json:"written_at"`
+    CreatedAt string `json:"created_at"`
+    UpdatedAt string `json:"updated_at"`
+    Collection string `json:"collection"`
+    PurgedAt string `json:"purged_at"`
+    TrackedHashLabel string `json:"tracked_hash_label"`
+    TrackedHashValue string `json:"tracked_hash_value"`
+}
+
 const (
 	EVENT_TYPE_ENTRY = 1
 	EVENT_TYPE_EXIT  = 2
+    OPERATION_TYPE_READ = 1000
+    OPERATION_TYPE_WRITE = 2000
+    OPERATION_TYPE_DELETE = 3000
 )
+
+func NewKeyTraceRecord(accountId string,
+    webTxnId string,
+    ravenpodTxnId string,
+    blockchainTxnId string,
+    mspId string,
+    channelName string,
+    collection string,
+    keyContent string,
+    valueContent string,
+    operationType int,
+    trackedHashLabel string,
+    trackedHashValue string,
+    timeTaken int64) KeyTrace {
+
+    currentTime := time.Now()
+    format := "2006-01-02 15:04:05.000"
+    hostname, _ := os.Hostname()
+    
+    readAt := ""
+    writtenAt := ""
+    purgedAt := ""
+
+    switch operationType {
+    case OPERATION_TYPE_READ:
+        readAt = currentTime.Format(format)
+    case OPERATION_TYPE_WRITE:
+        writtenAt = currentTime.Format(format)
+    case OPERATION_TYPE_DELETE:
+        purgedAt = currentTime.Format(format)
+    }
+    
+    keyTraceRecord := KeyTrace{
+        Id: guuid.New().String(),
+        AccountId: accountId,
+        WebTxnId: webTxnId,
+        RavenpodTxnId: ravenpodTxnId,
+        BlockchainTxnId: blockchainTxnId,
+        MspId: mspId,
+        Hostname: hostname,
+        ChannelName: channelName,
+        Collection: collection,
+        KeyContent: keyContent,
+        ValueContent: valueContent,
+        OperationType: operationType,
+        TimeTaken: timeTaken,
+        ReadAt: readAt,
+        WrittenAt: writtenAt,
+        PurgedAt: purgedAt,
+        TrackedHashLabel: trackedHashLabel,
+        TrackedHashValue: trackedHashValue,
+        CreatedAt: currentTime.Format(format)}
+
+    return keyTraceRecord
+
+}
+
+
 
 func NewTraceRecord(accountId string,
     webTxnId string,
