@@ -5,53 +5,55 @@ import (
     "os"
     "time"
 )
-
+    
 type Trace struct {
+    TableName string `json:"tableName"`
     Id string `json:"id"`
-    AccountId string `json:"account_id"`
-    WebTxnId string `json:"web_txn_id"`
-    RavenpodTxnId string `json:"ravenpod_txn_id"`
-    BlockchainTxnId string `json:"blockchain_txn_id"`
-    InvocationId string `json:"invocation_id"`
+    AccountId string `json:"accountId"`
+    WebTxnId string `json:"webTxnId"`
+    RavenpodTxnId string `json:"ravenpodTxnId"`
+    BlockchainTxnId string `json:"blockchainTxnId"`
+    InvocationId string `json:"invocationId"`
     Hostname string `json:"hostname"`
     Channel string `json:"channel"`
-    IsTransactionStart bool `json:"is_transaction_start"`
-    SequenceNumber int `json:"sequence_number"`
-    NestLevel int `json:"nest_level"`
-    ModuleName string `json:"module_name"`
-    FunctionName string `json:"function_name"`
+    IsTransactionStart bool `json:"isTransactionStart"`
+    SequenceNumber int `json:"sequenceNumber"`
+    NestLevel int `json:"nestLevel"`
+    ModuleName string `json:"moduleName"`
+    FunctionName string `json:"functionName"`
     Args string `json:"args"`
-    ReturnedResult string `json:"returned_result"`
-    EventType int `json:"event_type"`
-    EventData string `json:"event_data"`
-    EventTime string `json:"event_time"`
-    CreatedAt string `json:"created_at"`
-    UpdatedAt string `json:"updated_at"`
-    TransientMap string `json:"transient_map"`
+    ReturnedResult string `json:"returnedResult"`
+    EventType int `json:"eventType"`
+    EventData string `json:"eventData"`
+    EventTime string `json:"eventTime"`
+    CreatedAt string `json:"createdAt"`
+    UpdatedAt string `json:"updatedAt"`
+    TransientMap string `json:"transientMap"`
     Collection string `json:"collection"`
 }
 
 type KeyTrace struct {
+    TableName string `json:"tableName"`
     Id string `json:"id"`
-    AccountId string `json:"account_id"`
-    WebTxnId string `json:"web_txn_id"`
-    RavenpodTxnId string `json:"ravenpod_txn_id"`
-    BlockchainTxnId string `json:"blockchain_txn_id"`
-    MspId string `json:"msp_id"`
+    AccountId string `json:"accountId"`
+    WebTxnId string `json:"webTxnId"`
+    RavenpodTxnId string `json:"ravenpodTxnId"`
+    BlockchainTxnId string `json:"blockchainTxnId"`
+    MspId string `json:"mspId"`
     Hostname string `json:"hostname"`
-    ChannelName string `json:"channel_name"`
-    KeyContent string `json:"key_content"`
-    ValueContent string `json:"value_content"`
-    OperationType int `json:"operation_type"`
-    TimeTaken int64 `json:"time_taken"`
-    ReadAt string `json:"read_at"`
-    WrittenAt string `json:"written_at"`
-    CreatedAt string `json:"created_at"`
-    UpdatedAt string `json:"updated_at"`
+    ChannelName string `json:"channelName"`
+    KeyContent string `json:"keyContent"`
+    ValueContent string `json:"valueContent"`
+    OperationType int `json:"operationType"`
+    TimeTaken int64 `json:"timeTaken"`
+    ReadAt string `json:"readAt"`
+    WrittenAt string `json:"writtenAt"`
+    CreatedAt string `json:"createdAt"`
+    UpdatedAt string `json:"updatedAt"`
     Collection string `json:"collection"`
-    PurgedAt string `json:"purged_at"`
-    TrackedHashLabel string `json:"tracked_hash_label"`
-    TrackedHashValue string `json:"tracked_hash_value"`
+    PurgedAt string `json:"purgedAt"`
+    TrackedHashLabel string `json:"trackedHashLabel"`
+    TrackedHashValue string `json:"trackedHashValue"`
 }
 
 const (
@@ -60,6 +62,8 @@ const (
     OPERATION_TYPE_READ = 1000
     OPERATION_TYPE_WRITE = 2000
     OPERATION_TYPE_DELETE = 3000
+    TRACE_TABLE_NAME = "traces"
+    KEY_TRACE_TABLE_NAME = "key_traces"
 )
 
 func NewKeyTraceRecord(accountId string,
@@ -94,6 +98,7 @@ func NewKeyTraceRecord(accountId string,
     }
     
     keyTraceRecord := KeyTrace{
+        TableName: KEY_TRACE_TABLE_NAME,
         Id: guuid.New().String(),
         AccountId: accountId,
         WebTxnId: webTxnId,
@@ -118,8 +123,6 @@ func NewKeyTraceRecord(accountId string,
 
 }
 
-
-
 func NewTraceRecord(accountId string,
     webTxnId string,
     ravenpodTxnId string,
@@ -143,6 +146,7 @@ func NewTraceRecord(accountId string,
     hostname, _ := os.Hostname()
 
 	traceRecord := Trace{
+        TableName: TRACE_TABLE_NAME,
         Id: guuid.New().String(),
         AccountId: accountId,
         WebTxnId: webTxnId,

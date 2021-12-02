@@ -4,16 +4,16 @@ import (
 	"sync"
 	"log"
     "encoding/json"    
+	"time"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"	
-	"github.com/ravengit/ravenpod-cc-dc-go/model"
 )
 
-const BATCH_SIZE = 1
-const STREAM_NAME_TRACE = "trace"
-const STREAM_NAME_KEY_TRACE = "keytrace"
+const FLUSH_TIMER = 15
+const BATCH_SIZE = 10
+const STREAM_NAME = "prodDataStream"
 
 type AWSKinesis struct {
 	stream          string
@@ -24,20 +24,14 @@ type AWSKinesis struct {
 	sessionToken    string
 }
 
-type TraceRecordSet struct {
-    items             []*kinesis.PutRecordsRequestEntry
-	mutex             *sync.Mutex
-}
-
-type KeyTraceRecordSet struct {
+type DataRecordSet struct {
     items             []*kinesis.PutRecordsRequestEntry
 	mutex             *sync.Mutex
 }
 
 type DataPublisher struct {
 	kinesisSession *kinesis.Kinesis
-	trs TraceRecordSet
-	ktrs KeyTraceRecordSet
+	drs DataRecordSet
 }
 
 var (
@@ -47,17 +41,35 @@ var (
 
 func InitDataPublisher(region string, dataPipelineAccessKey string, dataPipelineSecretAccessKey string) {
 	doOnce.Do(func() {
-		log.Println(region, dataPipelineAccessKey, dataPipelineSecretAccessKey)
-		// connect to aws-kinesis
+		log.Println("[RAVENPOD] Data pipeline: ", region, dataPipelineAccessKey, dataPipelineSecretAccessKey)
 		sess := session.New(&aws.Config{
 			Region:      aws.String(region),
 			Credentials: credentials.NewStaticCredentials(dataPipelineAccessKey, dataPipelineSecretAccessKey, ""),
 		})
 		dataPublisher = &DataPublisher{
 			kinesisSession: kinesis.New(sess),
-			trs: TraceRecordSet{mutex: &sync.Mutex{}},
-			ktrs: KeyTraceRecordSet{mutex:  &sync.Mutex{}},
+			drs: DataRecordSet{mutex: &sync.Mutex{}},
 		}
+		ticker := time.NewTicker(FLUSH_TIMER * time.Second)
+		quit := make(chan struct{})
+		go func() {
+			for {
+			   select {
+				case <- ticker.C:
+					log.Println("[RAVENPOD] Flush timer wakes up")
+                    if len(dataPublisher.drs.items) > 0 {
+                        log.Println("[RAVENPOD] No. of records in recordset", len(dataPublisher.drs.items))
+                        dataPublisher.flushRecordSet(STREAM_NAME, &dataPublisher.drs.items)
+                        log.Println("[RAVENPOD] Force flushing performed successfully")
+                    } else {
+                        log.Println("[RAVENPOD] No record in recordset")
+                    }                
+				case <- quit:
+					ticker.Stop()
+					return
+				}
+			}
+		}()		
     })
 }
 
@@ -65,52 +77,27 @@ func GetDataPublisher() *DataPublisher {
     return dataPublisher
 }
 
-func (dp *DataPublisher) PushTraceRecord(record model.Trace) {
-	dp.trs.mutex.Lock()
-	defer dp.trs.mutex.Unlock()
+func (dp *DataPublisher) PushRecord(record interface{}, partitionKey string) {
+	dp.drs.mutex.Lock()
+	defer dp.drs.mutex.Unlock()
 
     jsonBuffer, err := json.Marshal(&record)
     if err != nil {
-        log.Println("Error marshalling trace record data", err)
+        log.Println("Error marshalling the record data", err)
         return
 	}
 
 	item := &kinesis.PutRecordsRequestEntry{
 		Data:         jsonBuffer,
-		PartitionKey: aws.String(record.AccountId),
+		PartitionKey: aws.String(partitionKey),
 	}
 
-	dp.trs.items = append(dp.trs.items, item)
+	dp.drs.items = append(dp.drs.items, item)
 
 	// log.Println("Pipeline items: ", dp.trs.items)
 
-	if len(dp.trs.items) >= BATCH_SIZE {
-		dp.flushRecordSet(STREAM_NAME_TRACE, &dp.trs.items)
-	}
-
-}
-
-func (dp *DataPublisher) PushKeyTraceRecord(record model.KeyTrace) {
-	dp.trs.mutex.Lock()
-	defer dp.trs.mutex.Unlock()
-
-    jsonBuffer, err := json.Marshal(&record)
-    if err != nil {
-        log.Println("Error marshalling key trace record data", err)
-        return
-	}
-
-	item := &kinesis.PutRecordsRequestEntry{
-		Data:         jsonBuffer,
-		PartitionKey: aws.String(record.AccountId),
-	}
-
-	dp.trs.items = append(dp.trs.items, item)
-
-	// log.Println("Pipeline items: ", dp.trs.items)
-
-	if len(dp.trs.items) >= BATCH_SIZE {
-		dp.flushRecordSet(STREAM_NAME_KEY_TRACE, &dp.trs.items)
+	if len(dp.drs.items) >= BATCH_SIZE {
+		dp.flushRecordSet(STREAM_NAME, &dp.drs.items)
 	}
 
 }
